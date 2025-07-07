@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CV Form with AI (Vercel)</title>
+    <title>Creating Cv form with Ai</title>
+    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.tailwindcss.com"></script>
-    <style> body { font-family: 'Padauk', sans-serif; } </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
     <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-lg">
@@ -22,7 +22,7 @@
             </div>
             <div class="mb-4">
                 <label for="exp" class="block text-gray-700 font-semibold mb-2">အတွေ့အကြုံ (Experience):</label>
-                <input type="text" id="exp" name="exp" class="w-full px-4 py-2 border rounded-lg" required>
+                <input type="text" id="exp" name="exp" placeholder="ဥပမာ - 5 years" class="w-full px-4 py-2 border rounded-lg" required>
             </div>
             <div class="mb-4">
                 <label for="others" class="block text-gray-700 font-semibold mb-2">အခြားအချက်အလက် (Others):</label>
@@ -67,10 +67,21 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(dataToSend)
                     });
+
+                    // *** FIX: Improved error handling ***
                     if (!response.ok) {
-                        const err = await response.json();
-                        throw new Error(err.error || 'Server Error');
+                        // Try to get text first, as the error might not be JSON
+                        const errorText = await response.text();
+                        try {
+                            // See if the text is valid JSON
+                            const errJson = JSON.parse(errorText);
+                            throw new Error(errJson.error || 'Server Error');
+                        } catch (e) {
+                            // If it's not JSON, it's likely an HTML error page (like a 404)
+                            throw new Error(`Server returned status ${response.status}. Response: ${errorText.substring(0, 100)}...`);
+                        }
                     }
+
                     const result = await response.json();
                     if (result && result.output && result.output.answer) {
                         let answerText = result.output.answer.replace(/\\n/g, '\n').replace(/\*\*/g, '');
