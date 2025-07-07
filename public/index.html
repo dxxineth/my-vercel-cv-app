@@ -62,7 +62,7 @@
                 const formData = new FormData(aiForm);
                 const dataToSend = { name: formData.get('name'), skills: formData.get('skills'), exp: formData.get('exp'), others: formData.get('others') };
                 try {
-                    const response = await fetch('/api/generate-cv', {
+                    const response = await fetch('/.netlify/functions/generate-cv', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(dataToSend)
