@@ -7,9 +7,15 @@ app.use(express.json());
 const { RELEVANCE_API_URL } = process.env;
 
 app.post('/api/generate-cv', async (req, res) => {
+    // --- START DEBUGGING LOGS ---
+    console.log("--- Function /api/generate-cv was triggered ---");
+    
     if (!RELEVANCE_API_URL) {
-        return res.status(500).json({ error: 'Server configuration error: RELEVANCE_API_URL is not set.' });
+        console.error("FATAL: RELEVANCE_API_URL environment variable is not set.");
+        return res.status(500).json({ error: 'Server configuration error: RELEVANCE_API_URL is missing.' });
     }
+    console.log("RELEVANCE_API_URL is present. Attempting to fetch...");
+    // --- END DEBUGGING LOGS ---
 
     const userData = req.body;
     const dataToSend = {
@@ -23,10 +29,28 @@ app.post('/api/generate-cv', async (req, res) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dataToSend)
         });
-        const data = await apiResponse.json();
-        if (!apiResponse.ok) throw new Error(data.message || 'Error from Relevance AI service');
+
+        // --- MORE DEBUGGING ---
+        console.log(`Relevance AI API responded with status: ${apiResponse.status}`);
+        const responseText = await apiResponse.text(); // Get response as text first
+        console.log(`Relevance AI API response body: ${responseText}`);
+        // --- END MORE DEBUGGING ---
+
+        if (!apiResponse.ok) {
+            // Throw an error with the response text we got
+            throw new Error(`Relevance AI API returned an error: ${responseText}`);
+        }
+        
+        // Now try to parse the text as JSON
+        const data = JSON.parse(responseText);
         res.status(200).json(data);
+
     } catch (error) {
+        // --- DETAILED CATCH LOG ---
+        console.error("!!! AN ERROR OCCURRED IN THE CATCH BLOCK !!!");
+        console.error("Error Message:", error.message);
+        console.error("Error Stack:", error.stack);
+        // --- END DETAILED CATCH LOG ---
         res.status(500).json({ error: error.message });
     }
 });
