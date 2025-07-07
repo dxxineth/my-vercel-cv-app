@@ -2,9 +2,9 @@
   "name": "cv-app-final-v2",
   "version": "1.0.0",
   "description": "CV Generator with Relevance AI on Vercel",
-  "main": "api/index.js",
   "scripts": {
-    "start": "node api/index.js"
+    "dev": "netlify dev",
+    "start": "netlify dev"
   },
   "keywords": [],
   "author": "",
@@ -13,5 +13,7 @@
     "express": "^4.19.2",
     "node-fetch": "^2.7.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  }
 }
