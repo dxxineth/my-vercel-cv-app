@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CV Form with AI (Vercel)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style> body { font-family: 'Padauk', sans-serif; } </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-lg">
+        <h1 class="text-3xl font-bold mb-2 text-gray-800">Creating CV Form with Ai</h1>
+        <form id="ai-form">
+            <br>
+            <div class="mb-4">
+                <label for="name" class="block text-gray-700 font-semibold mb-2">အမည် (Name):</label>
+                <input type="text" id="name" name="name" class="w-full px-4 py-2 border rounded-lg" required>
+            </div>
+            <div class="mb-4">
+                <label for="skills" class="block text-gray-700 font-semibold mb-2">ကျွမ်းကျင်မှုများ (Skills):</label>
+                <input type="text" id="skills" name="skills" class="w-full px-4 py-2 border rounded-lg" required>
+            </div>
+            <div class="mb-4">
+                <label for="exp" class="block text-gray-700 font-semibold mb-2">အတွေ့အကြုံ (Experience):</label>
+                <input type="text" id="exp" name="exp" class="w-full px-4 py-2 border rounded-lg" required>
+            </div>
+            <div class="mb-4">
+                <label for="others" class="block text-gray-700 font-semibold mb-2">အခြားအချက်အလက် (Others):</label>
+                <textarea id="others" name="others" rows="3" class="w-full px-4 py-2 border rounded-lg"></textarea>
+            </div>
+            <div class="flex justify-center mt-6">
+                 <button type="button" id="submit-button" class="w-full md:w-1/2 bg-blue-600 text-white font-bold py-3 px-4 rounded-lg">Submit</button>
+            </div>
+        </form>
+        <div id="result-container" class="mt-6">
+            <h2 class="text-xl font-bold text-gray-800">ရလဒ်:</h2>
+            <div id="loading" style="display: none;" class="my-4 text-center">... Processing ...</div>
+            <div id="result-output" class="bg-green-50 text-gray-900 p-4 rounded-lg mt-2 min-h-[100px]"></div>
+            <button id="download-button" style="display: none;" class="w-full mt-4 bg-gray-700 text-white font-bold py-3 px-4 rounded-lg">CV ကို Download ရယူမည်</button>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const aiForm = document.getElementById('ai-form');
+            const submitButton = document.getElementById('submit-button');
+            const loadingSpinner = document.getElementById('loading');
+            const resultOutput = document.getElementById('result-output');
+            const downloadButton = document.getElementById('download-button');
+
+            function setLoading(isLoading) {
+                loadingSpinner.style.display = isLoading ? 'block' : 'none';
+                if(isLoading) {
+                    resultOutput.innerHTML = '';
+                    downloadButton.style.display = 'none';
+                }
+                submitButton.disabled = isLoading;
+            }
+
+            submitButton.addEventListener('click', async () => {
+                if (!aiForm.checkValidity()) return aiForm.reportValidity();
+                setLoading(true);
+                const formData = new FormData(aiForm);
+                const dataToSend = { name: formData.get('name'), skills: formData.get('skills'), exp: formData.get('exp'), others: formData.get('others') };
+                try {
+                    const response = await fetch('/api/generate-cv', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dataToSend)
+                    });
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.error || 'Server Error');
+                    }
+                    const result = await response.json();
+                    if (result && result.output && result.output.answer) {
+                        let answerText = result.output.answer.replace(/\\n/g, '\n').replace(/\*\*/g, '');
+                        const headers = ["### English Format", "### Myanmar Format", "Name:", "Skills:", "Experience:", "Other Factors:", "အမည်:", "ကျွမ်းကျင်မှုများ:", "အတွေ့အကြုံ:", "အခြားအချက်များ:"];
+                        const regex = new RegExp(`(${headers.join('|')})`, 'g');
+                        let parts = answerText.split(regex).filter(part => part.trim() !== '');
+                        let formattedHtml = '';
+                        for (let i = 0; i < parts.length; i++) {
+                            let part = parts[i].trim();
+                            if (headers.includes(part)) {
+                                if (part.startsWith("###")) {
+                                    formattedHtml += `<h2 class="text-xl font-bold mt-4 mb-2 text-gray-800 border-b pb-1">${part.replace('###', '').trim()}</h2>`;
+                                } else {
+                                    formattedHtml += `<p class="mt-2"><strong class="text-gray-900 font-semibold">${part}</strong></p>`;
+                                }
+                            } else {
+                                let content = part.replace(/^-/gm, '&bull;');
+                                formattedHtml += `<p class="text-gray-700 ml-4">${content.trim().replace(/\n/g, '<br>')}</p>`;
+                            }
+                        }
+                        resultOutput.innerHTML = `<div class="text-left leading-relaxed">${formattedHtml}</div>`;
+                        downloadButton.style.display = 'block';
+                    } else {
+                         resultOutput.innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+                    }
+                } catch (error) {
+                    resultOutput.innerHTML = `<p class="text-red-500">${error.message}</p>`;
+                } finally {
+                    setLoading(false);
+                }
+            });
+
+            downloadButton.addEventListener('click', () => {
+                const cvContent = resultOutput.innerHTML;
+                const name = document.getElementById('name').value || 'cv';
+                const fullHtml = `<!DOCTYPE html><html lang="my"><head><meta charset="UTF-8"><title>CV for ${name}</title><style>body{font-family:sans-serif;line-height:1.6;padding:20px}h2{font-size:1.5em;margin-top:1.5em;border-bottom:1px solid #ccc;padding-bottom:5px}p{margin-left:20px}</style></head><body>${cvContent}</body></html>`;
+                const blob = new Blob([fullHtml], { type: 'text/html' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `${name.replace(/\s+/g, '_')}_CV.html`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        });
+    </script>
+</body>
+</html>
